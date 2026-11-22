@@ -26,6 +26,11 @@ import {
 
 import { RUNTIME_CDN_URL, runtimeCdnUrlForVersion } from "./runtime-url.js";
 
+const TIMELINE_NOT_FOUND = "Composition timeline not found after 8s";
+export const SEALED_TIMELINE_NOT_FOUND =
+  `${TIMELINE_NOT_FOUND}. A sealed player adds the HyperFrames runtime only to a composition from its own site: ` +
+  "include the runtime script in a composition from another site, or play a composition you trust without sandbox-origin.";
+
 export { runtimeCdnUrlForVersion };
 
 export interface ProbeResult {
@@ -42,6 +47,7 @@ export interface ProbeCallbacks {
   onRuntimeInjected?: () => void;
   resolveRuntimeUrl?: () => string;
   hostOwnsDeadline?: () => boolean;
+  sealed?: () => boolean;
 }
 
 /**
@@ -133,7 +139,8 @@ export class CompositionProbe {
 
   private _deadlineOutcome(attempts: number): ProbeOutcome {
     if (attempts < 40 || this._callbacks.hostOwnsDeadline?.()) return null;
-    return { kind: "error", message: "Composition timeline not found after 8s" };
+    const sealed = this._callbacks.sealed?.() === true;
+    return { kind: "error", message: sealed ? SEALED_TIMELINE_NOT_FOUND : TIMELINE_NOT_FOUND };
   }
 
   private _poll(attempts: number): ProbeOutcome {
